@@ -10,15 +10,19 @@ interface ConsentManagerModalProps {
 }
 
 export function ConsentManagerModal({ isOpen, onClose }: ConsentManagerModalProps) {
-  const { showToast } = useFinancial()
-  const [hdfcConsent, setHdfcConsent] = useState(true)
-  const [cardConsent, setCardConsent] = useState(true)
-  const [voiceConsent, setVoiceConsent] = useState(true)
+  const { consent, updateConsent } = useFinancial()
+  const [hdfcConsent, setHdfcConsent] = useState(consent.accountAggregation)
+  const [cardConsent, setCardConsent] = useState(consent.personalization)
+  const [voiceConsent, setVoiceConsent] = useState(consent.voice)
 
   if (!isOpen) return null
 
   const handleSave = () => {
-    showToast('Consent preferences updated and synchronized with Account Aggregator')
+    updateConsent({
+      accountAggregation: hdfcConsent,
+      personalization: cardConsent,
+      voice: voiceConsent,
+    })
     onClose()
   }
 

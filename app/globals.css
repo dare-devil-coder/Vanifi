@@ -1332,6 +1332,23 @@
   transform: scale(0.98);
 }
 
+.transaction-button {
+  width: 100%;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.transaction-button:hover {
+  background: var(--soft);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
@@ -1340,6 +1357,59 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Keep dense financial rows usable on narrow screens without hiding content. */
+@media (max-width: 560px) {
+  .commitment-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    min-width: 0;
+  }
+
+  .commitment-info,
+  .commitment-info span,
+  .commitment-info b {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .loan-flow,
+  .loan-panel,
+  .loan-progress,
+  .kfs {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .loan-progress {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .loan-progress span {
+    flex: 0 0 auto;
+  }
+
+  .loan-panel button,
+  .loan-panel a {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .kfs strong,
+  .application-status-card strong {
+    overflow-wrap: anywhere;
+  }
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(13, 120, 112, 0.45);
+  outline-offset: 2px;
 }
 
 

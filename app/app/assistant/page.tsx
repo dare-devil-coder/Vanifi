@@ -3,6 +3,8 @@
 import React, { useState } from 'react'
 import { Mic, ArrowRight, LockKeyhole, Sparkles, Check, AlertCircle, RefreshCw, Volume2 } from 'lucide-react'
 import { useFinancial } from '@/lib/financial-context'
+import type { Commitment } from '@/lib/financial-context'
+import { parseVoiceIntent } from '@/lib/financial/calculations'
 
 interface ChatMessage {
   id: string
@@ -52,16 +54,19 @@ export default function AssistantPage() {
     // Process vernacular intent
     setTimeout(() => {
       if (clean.toLowerCase().includes('fee') || clean.includes('फीस') || clean.includes('college')) {
+        const parsed = parseVoiceIntent(clean)
         const vaniResponse: ChatMessage = {
           id: `msg-${Date.now() + 1}`,
           sender: 'vani',
-          text: 'मैंने पहचान लिया है कि आपको कॉलेज फीस के लिए ₹50,000 की जरूरत होगी। क्या आप चाहते हैं कि मैं इसे आगामी जिम्मेदारी के रूप में सुरक्षित कर दूं ताकि आपका सेफ-टू-स्पेंड बैलेंस सुरक्षित रहे?',
-          intentAction: {
-            category: 'Education',
-            amount: 50000,
-            dueDate: '18 Oct 2026',
-            confirmed: false,
-          },
+          text: parsed.spokenConfirmation,
+          intentAction: parsed.amount && parsed.dueDate
+            ? {
+                category: parsed.category,
+                amount: parsed.amount,
+                dueDate: parsed.dueDate,
+                confirmed: false,
+              }
+            : undefined,
         }
         setMessages(prev => [...prev, vaniResponse])
       } else if (clean.toLowerCase().includes('loan') || clean.includes('लोन') || clean.includes('कर्ज')) {
@@ -90,11 +95,14 @@ export default function AssistantPage() {
   }
 
   const handleConfirmIntent = (msgId: string, action: NonNullable<ChatMessage['intentAction']>) => {
+    const category: Commitment['category'] = ['Education', 'Housing', 'Insurance', 'Bills', 'Family'].includes(action.category)
+      ? action.category as Commitment['category']
+      : 'Family'
     addCommitment({
       title: `${action.category} (Added via Vani Voice)`,
       amount: action.amount,
       dueDate: action.dueDate,
-      category: action.category as any,
+      category,
       priority: 'High priority',
       notes: 'Recorded via Vernacular AI Assistant',
     })

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -24,9 +24,9 @@ import { VoiceAssistantDock } from '@/components/voice/voice-assistant-dock'
 import { ConsentManagerModal } from '@/components/modals/consent-manager-modal'
 import { ReportIssueModal } from '@/components/modals/report-issue-modal'
 
-function CalendarIcon(props: React.SVGProps<SVGSVGElement>) {
+function CalendarIcon({ size = 18, ...props }: React.SVGProps<SVGSVGElement> & { size?: number }) {
   return (
-    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg {...props} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <rect x="3" y="4" width="18" height="17" rx="2" />
       <path d="M16 2v4M8 2v4M3 10h18" />
     </svg>
@@ -58,24 +58,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [consentOpen, setConsentOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
 
+  useEffect(() => {
+    const handleDialogKeyboard = (event: KeyboardEvent) => {
+      const dialog = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+      if (!dialog) return
+      if (event.key === 'Escape') {
+        const closeButton = dialog.querySelector<HTMLButtonElement>('button[aria-label*="Close"], button[aria-label*="close"]')
+        if (closeButton) closeButton.click()
+        else dialog.querySelector<HTMLElement>('.modal-overlay')?.click()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(element => !element.hasAttribute('disabled'))
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', handleDialogKeyboard)
+    return () => document.removeEventListener('keydown', handleDialogKeyboard)
+  }, [])
+
   const cycleLanguage = () => {
     if (language === 'English') setLanguage('हिन्दी')
     else if (language === 'हिन्दी') setLanguage('ગુજરાતી')
     else setLanguage('English')
   }
 
+  const localizedNavItems = navItems.map(item => ({
+    ...item,
+    label: t(item.id === 'foryou' ? 'forYou' : item.id as keyof typeof import('@/lib/translations').translations['English']),
+  }))
+
   // Determine current page title
   const getTitle = () => {
-    if (pathname === '/app') return 'Good morning, Riya'
-    if (pathname === '/app/financial-pulse') return 'Your financial pulse'
-    if (pathname === '/app/money') return 'Money & Accounts'
-    if (pathname === '/app/commitments') return 'Future commitments'
-    if (pathname === '/app/for-you') return 'Picked for you'
-    if (pathname === '/app/protection') return 'Protection centre'
-    if (pathname === '/app/assistant') return 'Talk to Vani'
-    if (pathname?.startsWith('/app/loans')) return 'A safer way to borrow'
-    if (pathname === '/app/notifications') return 'Notifications'
-    if (pathname === '/app/settings') return 'Settings & Preferences'
+    if (pathname === '/app') return `${t('welcomeBack')}, Riya`
+    if (pathname === '/app/financial-pulse') return t('pulse')
+    if (pathname === '/app/money') return t('money')
+    if (pathname === '/app/commitments') return t('commitments')
+    if (pathname === '/app/for-you') return t('forYou')
+    if (pathname === '/app/protection') return t('protection')
+    if (pathname === '/app/assistant') return t('assistant')
+    if (pathname?.startsWith('/app/loans')) return t('loans')
+    if (pathname === '/app/notifications') return t('notifications')
+    if (pathname === '/app/settings') return t('settings')
     return 'Vani-Fi'
   }
 
@@ -105,7 +137,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav aria-label="Main navigation">
-          {navItems.map(item => {
+          {localizedNavItems.map(item => {
             const Icon = item.icon
             const isActive = pathname === item.href
             return (

@@ -16,6 +16,7 @@ export interface CommitmentItem {
 
 export interface PulseMetrics {
   score: number
+  band: 'excellent' | 'healthy' | 'watch' | 'stressed' | 'critical'
   momentum: string
   liquidity: 'strong' | 'stable' | 'weak'
   incomeStability: 'stable' | 'variable' | 'unstable'
@@ -25,6 +26,11 @@ export interface PulseMetrics {
 }
 
 export type DecisionType = 'OFFER' | 'ASSIST' | 'PROTECT' | 'WARN' | 'DO_NOTHING'
+
+export interface PulseTransaction {
+  amount: number
+  type: 'income' | 'expense'
+}
 
 export interface NextBestActionRecommendation {
   id: string
@@ -72,15 +78,22 @@ export function calculateFinancialPulse({
   monthlyIncome = 78500,
   commitments,
   stressOverride,
+  safeToSpend,
+  transactions = [],
+  pendingFraud = false,
 }: {
   currentBalance: number
   monthlyIncome?: number
   commitments: CommitmentItem[]
   stressOverride?: 'healthy' | 'stressed'
+  safeToSpend?: number
+  transactions?: PulseTransaction[]
+  pendingFraud?: boolean
 }): PulseMetrics {
   if (stressOverride === 'stressed') {
     return {
       score: 48,
+      band: 'stressed',
       momentum: 'Financial stress detected',
       liquidity: 'weak',
       incomeStability: 'variable',
@@ -94,6 +107,43 @@ export function calculateFinancialPulse({
     }
   }
 
+  if (safeToSpend !== undefined || transactions.length > 0 || pendingFraud) {
+    const totalCommitments = commitments.reduce(
+      (sum, commitment) => sum + Math.max(0, commitment.amount - commitment.savedAmount),
+      0,
+    )
+    const safeRatio = currentBalance > 0 ? Math.max(0, Math.min(1, (safeToSpend ?? currentBalance) / currentBalance)) : 0
+    const incomeTotal = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Math.max(0, t.amount), 0)
+    const expenseTotal = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0)
+    const incomeStability = transactions.filter(t => t.type === 'income').length >= 3 ? 20 : incomeTotal > 0 ? 14 : 8
+    const liquidityScore = currentBalance >= monthlyIncome ? 30 : Math.round(30 * safeRatio)
+    const commitmentPressure = monthlyIncome > 0 ? totalCommitments / monthlyIncome : 1
+    const commitmentScore = Math.max(0, Math.round(20 - Math.min(20, commitmentPressure * 20)))
+    const expenseScore = expenseTotal <= monthlyIncome * 0.25 ? 15 : expenseTotal <= monthlyIncome * 0.5 ? 10 : 4
+    // Fraud risk is intentionally kept separate from financial wellbeing.
+    const protectionScore = 10
+    const score = Math.max(0, Math.min(100, liquidityScore + incomeStability + commitmentScore + expenseScore + protectionScore))
+    const band = score >= 90 ? 'excellent' : score >= 75 ? 'healthy' : score >= 60 ? 'watch' : score >= 40 ? 'stressed' : 'critical'
+    const liquidity = safeRatio >= 0.6 ? 'strong' : safeRatio >= 0.3 ? 'stable' : 'weak'
+    const debtLoad = commitmentPressure >= 0.7 ? 'high' : commitmentPressure >= 0.35 ? 'moderate' : 'low'
+
+    return {
+      score,
+      band,
+      momentum: band === 'excellent' || band === 'healthy' ? 'Healthy financial momentum' : band === 'watch' ? 'A little more breathing room would help' : 'Financial pressure needs attention',
+      liquidity,
+      incomeStability: incomeStability >= 18 ? 'stable' : incomeStability >= 12 ? 'variable' : 'unstable',
+      debtLoad,
+      protectionStatus: pendingFraud ? 'review' : 'covered',
+      drivers: [
+        `${liquidity === 'strong' ? 'Safe-to-Spend remains well covered' : 'Safe-to-Spend is tightening'} against the current liquid balance.`,
+        `${incomeStability >= 18 ? 'Recent income credits show a stable rhythm.' : 'More income history is needed to confirm stability.'}`,
+        `${totalCommitments > 0 ? `Upcoming commitments total ₹${totalCommitments.toLocaleString('en-IN')} after virtual earmarks.` : 'No upcoming commitments are currently recorded.'}`,
+        ...(pendingFraud ? ['An unresolved security alert requires attention separately from financial stress.'] : []),
+      ],
+    }
+  }
+
   // Normal calculation
   const totalCommitments = commitments.reduce((sum, c) => sum + c.amount, 0)
   const coverageMonths = totalCommitments > 0 ? (currentBalance / totalCommitments) : 3
@@ -101,6 +151,7 @@ export function calculateFinancialPulse({
 
   return {
     score: isStrong ? 82 : 65,
+    band: isStrong ? 'healthy' : 'watch',
     momentum: isStrong ? 'Healthy financial momentum' : 'Moderate momentum',
     liquidity: isStrong ? 'strong' : 'stable',
     incomeStability: 'stable',
@@ -122,10 +173,16 @@ export function getNextBestActions({
   pulse,
   safeToSpend,
   stressLevel,
+  currentBalance,
+  commitments = [],
+  pendingFraud = false,
 }: {
   pulse: PulseMetrics
   safeToSpend: number
   stressLevel: 'healthy' | 'stressed'
+  currentBalance?: number
+  commitments?: CommitmentItem[]
+  pendingFraud?: boolean
 }): NextBestActionRecommendation[] {
   if (stressLevel === 'stressed' || pulse.liquidity === 'weak' || pulse.debtLoad === 'high') {
     return [
@@ -165,8 +222,40 @@ export function getNextBestActions({
     ]
   }
 
+  const actions: NextBestActionRecommendation[] = []
+  if (pendingFraud) {
+    actions.push({
+      id: 'act-protect-fraud',
+      type: 'PROTECT',
+      badge: 'SECURITY REVIEW',
+      title: 'Verify an unusual transaction',
+      description: 'Your financial health and security risk are tracked separately. Review this activity before taking any action.',
+      actionLabel: 'Open Protection',
+      actionRoute: '/app/protection',
+      actionType: 'navigate',
+      reasoning: 'A pending anomaly was detected by the demo security monitor.',
+      priority: 'high',
+    })
+  }
+
+  const commitmentPressure = commitments.reduce((sum, commitment) => sum + Math.max(0, commitment.amount - commitment.savedAmount), 0)
+  if (currentBalance !== undefined && (safeToSpend < currentBalance * 0.5 || commitmentPressure > currentBalance * 0.5)) {
+    actions.push({
+      id: 'act-assist-commitment',
+      type: 'ASSIST',
+      badge: 'PLAN WITH CARE',
+      title: 'Plan upcoming commitments before adding new products',
+      description: 'Your virtual commitments are using a meaningful share of your available balance. Review timing and set-aside options first.',
+      actionLabel: 'Review commitments',
+      actionRoute: '/app/commitments',
+      actionType: 'navigate',
+      reasoning: 'Upcoming obligations reduce the portion of your balance that is safely flexible.',
+      priority: 'high',
+    })
+  }
+
   // Healthy Customer Flow
-  return [
+  const healthyActions: NextBestActionRecommendation[] = [
     {
       id: 'act-offer-1',
       type: 'OFFER',
@@ -201,6 +290,7 @@ export function getNextBestActions({
       priority: 'low',
     },
   ]
+  return [...actions, ...healthyActions]
 }
 
 /**
@@ -211,43 +301,90 @@ export function parseVoiceIntent(rawText: string): {
   category: 'Education' | 'Housing' | 'Insurance' | 'Bills' | 'Family' | 'Other'
   amount?: number
   dueDate?: string
+  missingFields?: Array<'amount' | 'dueDate'>
   confidence: 'CONFIRMED' | 'ESTIMATED' | 'RECURRING'
   spokenConfirmation: string
 } {
   const lower = rawText.toLowerCase()
 
   if (lower.includes('college') || lower.includes('fees') || rawText.includes('फीस') || rawText.includes('कॉलेज')) {
-    // Extract ₹50,000 or fifty thousand
-    const amount = 50000
+    const numericAmount = lower.match(/(?:₹|rs\.?\s*)?([0-9][0-9,]*)/i)?.[1]
+    const parsedNumericAmount = numericAmount ? Number(numericAmount.replace(/,/g, '')) : undefined
+    const amount = parsedNumericAmount
+      ? /हजार|hazaar|hazar|thousand/i.test(rawText) ? parsedNumericAmount * 1000 : parsedNumericAmount
+      : /पचास\s*हजार|pachaas\s*hazar|fifty\s*thousand/i.test(rawText) ? 50000 : undefined
+    const hasNextMonth = /next month|अगले महीने|अगले माह|agle mahine/i.test(rawText)
+    const missingFields: Array<'amount' | 'dueDate'> = []
+    if (!amount) missingFields.push('amount')
+    if (!hasNextMonth) missingFields.push('dueDate')
+    if (missingFields.length > 0) {
+      return {
+        intent: 'create_commitment',
+        category: 'Education',
+        amount,
+        dueDate: hasNextMonth ? 'Next month' : undefined,
+        missingFields,
+        confidence: 'ESTIMATED',
+        spokenConfirmation: missingFields.includes('amount')
+          ? 'Bilkul. College fees ke liye kitni rakam chahiye?'
+          : 'Theek hai. Ye fees kab deni hai?',
+      }
+    }
     return {
       intent: 'create_commitment',
       category: 'Education',
       amount,
-      dueDate: '18 Oct 2026',
+      dueDate: 'Next month',
       confidence: 'CONFIRMED',
-      spokenConfirmation: 'आपकी बेटी की कॉलेज फीस ₹50,000 की 18 अक्टूबर के लिए पहचान ली गई है। क्या मैं इसे आगामी खर्च के रूप में सुरक्षित कर दूं?',
+      spokenConfirmation: 'Aapne bataya ki agle mahine college fees ke liye ₹50,000 dene hain. Kya main ise upcoming expense ke roop mein save kar doon?',
     }
   }
 
   if (lower.includes('rent') || rawText.includes('किराया') || rawText.includes('ભાડું')) {
-    const amount = 18000
+    const numericAmount = lower.match(/(?:₹|rs\.?\s*)?([0-9][0-9,]*)/i)?.[1]
+    const parsedNumericAmount = numericAmount ? Number(numericAmount.replace(/,/g, '')) : undefined
+    const amount = parsedNumericAmount
+      ? /हजार|hazaar|hazar|thousand/i.test(rawText) ? parsedNumericAmount * 1000 : parsedNumericAmount
+      : undefined
+    const hasNextMonth = /next month|अगले महीने|अगले माह|agle mahine/i.test(rawText)
+    const missingFields: Array<'amount' | 'dueDate'> = []
+    if (!amount) missingFields.push('amount')
+    if (!hasNextMonth) missingFields.push('dueDate')
+    if (missingFields.length > 0) {
+      return {
+        intent: 'create_commitment',
+        category: 'Housing',
+        amount,
+        dueDate: hasNextMonth ? 'Next month' : undefined,
+        missingFields,
+        confidence: 'ESTIMATED',
+        spokenConfirmation: missingFields.includes('amount')
+          ? 'Rent ke liye kitni rakam rakhni hai?'
+          : 'Rent kis din ya kis mahine dena hai?',
+      }
+    }
     return {
       intent: 'create_commitment',
       category: 'Housing',
       amount,
-      dueDate: '01 Nov 2026',
+      dueDate: 'Next month',
       confidence: 'RECURRING',
-      spokenConfirmation: 'I identified an upcoming apartment rent commitment of ₹18,000 for 1st November. Shall I reserve this in your safe-to-spend plan?',
+      spokenConfirmation: 'I identified rent of ₹18,000 for next month. Shall I reserve this in your safe-to-spend plan?',
     }
   }
 
   if (lower.includes('loan') || rawText.includes('लोन') || rawText.includes('कर्ज')) {
+    const numericAmount = lower.match(/(?:₹|rs\.?\s*)?([0-9][0-9,]*)/i)?.[1]
+    const amount = numericAmount ? Number(numericAmount.replace(/,/g, '')) : undefined
     return {
       intent: 'loan_affordability',
       category: 'Bills',
-      amount: 50000,
+      amount,
+      missingFields: amount ? undefined : ['amount'],
       confidence: 'ESTIMATED',
-      spokenConfirmation: 'लोन की आवश्यकता दर्ज की गई है। क्या आप पहले अपनी वित्तीय स्थिति और की फैक्ट्स स्टेटमेंट (KFS) की समीक्षा करना चाहते हैं?',
+      spokenConfirmation: amount
+        ? `Aap ₹${amount.toLocaleString('en-IN')} loan ke baare mein pooch rahe hain. Pehle affordability aur KFS review karna chahenge?`
+        : 'Aapko kitni loan amount ki zarurat hai? Main pehle affordability check karungi.',
     }
   }
 

@@ -70,7 +70,7 @@ export default function LandingPage() {
           </div>
 
           <div className="pulse-score">
-            <strong>82</strong>
+            <strong>89</strong>
             <div>
               <b>Good financial momentum</b>
               <span>Continuous cashflow scan</span>

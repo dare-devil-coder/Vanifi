@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react'
 import { Language, translations } from './translations'
+import { calculateFinancialPulse, calculateSafeToSpend, getNextBestActions, parseVoiceIntent } from './financial/calculations'
 
 export interface Commitment {
   id: string
@@ -59,11 +60,26 @@ export interface FraudAlert {
   location: string
 }
 
+export interface ConsentState {
+  accountAggregation: boolean
+  personalization: boolean
+  notifications: boolean
+  voice: boolean
+  analytics: boolean
+}
+
+export interface UserProfile {
+  name: string
+  email: string
+  phone: string
+}
+
 export type VoiceState =
   | 'IDLE'
   | 'LISTENING'
   | 'PROCESSING'
   | 'UNDERSTANDING'
+  | 'CLARIFICATION_REQUIRED'
   | 'CONFIRMATION_REQUIRED'
   | 'USER_CONFIRMED'
   | 'ACTION'
@@ -76,6 +92,7 @@ export interface VoicePayload {
   category?: string
   amount?: number
   dueDate?: string
+  missingFields?: Array<'amount' | 'dueDate'>
   priority?: 'High priority' | 'Recurring' | 'Protected'
   spokenConfirmation?: string
 }
@@ -100,7 +117,9 @@ interface FinancialContextType {
   expectedIncome: number
   totalUpcomingCommitments: number
   pulseScore: number
+  pulseBand: 'excellent' | 'healthy' | 'watch' | 'stressed' | 'critical'
   pulseMomentum: string
+  pulseDrivers: string[]
   metrics: {
     liquidity: { value: string; detail: string; tone: 'teal' | 'amber' | 'coral' }
     incomeStability: { value: string; detail: string; tone: 'teal' | 'amber' | 'coral' }
@@ -144,6 +163,10 @@ interface FinancialContextType {
   language: Language
   setLanguage: (lang: Language) => void
   t: (key: keyof typeof translations['English']) => string
+  consent: ConsentState
+  updateConsent: (updates: Partial<ConsentState>) => void
+  profile: UserProfile
+  updateProfile: (updates: Partial<UserProfile>) => void
 
   // Voice Assistant state machine
   voiceState: VoiceState
@@ -168,6 +191,19 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>('English')
   const [stressLevel, setStressLevel] = useState<'healthy' | 'stressed'>('healthy')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [consent, setConsent] = useState<ConsentState>({
+    accountAggregation: true,
+    personalization: true,
+    notifications: true,
+    voice: true,
+    analytics: false,
+  })
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [profile, setProfile] = useState<UserProfile>({
+    name: 'Riya Sharma',
+    email: 'riya.sharma@email.com',
+    phone: '+91 98765 43210',
+  })
 
   // Commitments with initial realistic data
   const [commitments, setCommitments] = useState<Commitment[]>([
@@ -267,115 +303,111 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const [voiceState, setVoiceState] = useState<VoiceState>('IDLE')
   const [voicePayload, setVoicePayload] = useState<VoicePayload | null>(null)
 
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('vani-fi-demo-state')
+      if (saved) {
+        const state = JSON.parse(saved) as Partial<{
+          currentBalance: number
+          commitments: Commitment[]
+          transactions: Transaction[]
+          notifications: NotificationItem[]
+          fraudAlerts: FraudAlert[]
+          loanApplications: LoanApplicationData[]
+          language: Language
+          stressLevel: 'healthy' | 'stressed'
+          consent: ConsentState
+          profile: UserProfile
+        }>
+        if (typeof state.currentBalance === 'number') setCurrentBalance(state.currentBalance)
+        if (state.commitments) setCommitments(state.commitments)
+        if (state.transactions) setTransactions(state.transactions)
+        if (state.notifications) setNotifications(state.notifications)
+        if (state.fraudAlerts) setFraudAlerts(state.fraudAlerts)
+        if (state.loanApplications) setLoanApplications(state.loanApplications)
+        if (state.language) setLanguageState(state.language)
+        if (state.stressLevel) setStressLevel(state.stressLevel)
+        if (state.consent) setConsent(state.consent)
+        if (state.profile) setProfile(state.profile)
+      }
+    } catch {
+      window.localStorage.removeItem('vani-fi-demo-state')
+    } finally {
+      setIsHydrated(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isHydrated) return
+    window.localStorage.setItem('vani-fi-demo-state', JSON.stringify({
+      currentBalance,
+      commitments,
+      transactions,
+      notifications,
+      fraudAlerts,
+      loanApplications,
+      language,
+      stressLevel,
+      consent,
+      profile,
+    }))
+  }, [isHydrated, currentBalance, commitments, transactions, notifications, fraudAlerts, loanApplications, language, stressLevel, consent, profile])
+
   // Safe-to-Spend is dynamically calculated from balance minus unreserved commitments
   // Concept: Safe-to-Spend = Current Balance - Sum of (Commitment Amount - Saved Amount)
   const totalUpcomingCommitments = useMemo(() => {
     return commitments.reduce((sum, c) => sum + c.amount, 0)
   }, [commitments])
 
-  const unreservedCommitments = useMemo(() => {
-    return commitments.reduce((sum, c) => sum + Math.max(0, c.amount - c.savedAmount), 0)
-  }, [commitments])
-
   const safeToSpend = useMemo(() => {
-    // Retain minimum safety buffer of ₹10,000 if balance permits
-    const buffer = 10000
-    const available = currentBalance - unreservedCommitments - buffer
-    return Math.max(0, Math.round(available > 0 ? available : currentBalance - unreservedCommitments))
-  }, [currentBalance, unreservedCommitments])
+    return calculateSafeToSpend({
+      currentBalance,
+      commitments: commitments.map(commitment => ({
+        ...commitment,
+        confidence: 'CONFIRMED' as const,
+      })),
+      safetyBuffer: 10000,
+    })
+  }, [currentBalance, commitments])
 
-  // Financial Pulse dynamically updates with stress mode
-  const pulseScore = stressLevel === 'healthy' ? 82 : 48
-  const pulseMomentum = stressLevel === 'healthy' ? 'Good financial momentum' : 'Financial stress detected'
+  const pulseMetrics = useMemo(() => calculateFinancialPulse({
+    currentBalance,
+    monthlyIncome: expectedIncome,
+    commitments: commitments.map(commitment => ({
+      ...commitment,
+      confidence: commitment.priority === 'Recurring' ? 'RECURRING' as const : 'CONFIRMED' as const,
+    })),
+    safeToSpend,
+    transactions,
+    pendingFraud: fraudAlerts.some(alert => alert.status === 'pending'),
+    stressOverride: stressLevel === 'stressed' ? 'stressed' : undefined,
+  }), [currentBalance, expectedIncome, commitments, safeToSpend, transactions, fraudAlerts, stressLevel])
+
+  const pulseScore = pulseMetrics.score
+  const pulseMomentum = pulseMetrics.momentum
 
   const metrics = useMemo(() => {
-    if (stressLevel === 'healthy') {
-      return {
-        liquidity: { value: 'Strong', detail: 'Covering 2.4 months of planned expenses', tone: 'teal' as const },
-        incomeStability: { value: 'Stable', detail: 'Consistent for 4 consecutive months', tone: 'teal' as const },
-        debtLoad: { value: 'Moderate', detail: '24% of monthly income allocated to EMIs', tone: 'amber' as const },
-        protection: { value: 'Good', detail: 'Term cover in place, card fraud filter active', tone: 'teal' as const },
-      }
-    } else {
-      return {
-        liquidity: { value: 'Low', detail: 'Buffer under 15 days of upcoming commitments', tone: 'coral' as const },
-        incomeStability: { value: 'Declining', detail: 'Variable inflow noticed this cycle', tone: 'coral' as const },
-        debtLoad: { value: 'High', detail: '46% of monthly income under obligations', tone: 'coral' as const },
-        protection: { value: 'Attention', detail: 'Upcoming insurance renewal pending', tone: 'amber' as const },
-      }
+    const toneFor = (value: string) => value === 'strong' || value === 'stable' || value === 'low' || value === 'covered' ? 'teal' as const : value === 'moderate' || value === 'review' || value === 'variable' ? 'amber' as const : 'coral' as const
+    return {
+      liquidity: { value: pulseMetrics.liquidity[0].toUpperCase() + pulseMetrics.liquidity.slice(1), detail: `Safe-to-Spend is ₹${safeToSpend.toLocaleString('en-IN')} of ₹${currentBalance.toLocaleString('en-IN')} liquid balance`, tone: toneFor(pulseMetrics.liquidity) },
+      incomeStability: { value: pulseMetrics.incomeStability[0].toUpperCase() + pulseMetrics.incomeStability.slice(1), detail: `Expected monthly income: ₹${expectedIncome.toLocaleString('en-IN')}`, tone: toneFor(pulseMetrics.incomeStability) },
+      debtLoad: { value: pulseMetrics.debtLoad[0].toUpperCase() + pulseMetrics.debtLoad.slice(1), detail: `${commitments.length} upcoming commitment${commitments.length === 1 ? '' : 's'} tracked`, tone: toneFor(pulseMetrics.debtLoad) },
+      protection: { value: pulseMetrics.protectionStatus === 'covered' ? 'Good' : 'Review', detail: fraudAlerts.some(alert => alert.status === 'pending') ? 'Unusual activity needs review' : 'No unresolved security alerts', tone: toneFor(pulseMetrics.protectionStatus) },
     }
-  }, [stressLevel])
+  }, [pulseMetrics, safeToSpend, currentBalance, expectedIncome, commitments.length, fraudAlerts])
 
   // Recommendations: context-sensitive (OFFER, ASSIST, PROTECT, WARN, DO_NOTHING)
-  const recommendations = useMemo((): Recommendation[] => {
-    if (stressLevel === 'healthy') {
-      return [
-        {
-          id: 'rec-1',
-          type: 'OFFER',
-          badge: 'BEST NEXT STEP',
-          title: 'Build your emergency buffer',
-          description: 'You are ₹25,000 away from a comfortable 3-month cushion. Setting aside ₹2,500 weekly achieves this by March.',
-          actionLabel: 'Set aside buffer',
-          actionRoute: '/app/commitments',
-          actionType: 'navigate',
-          reasoning: 'Your income is stable and 68% of known commitments are already pre-funded. This is the optimal window to lock in liquidity.',
-        },
-        {
-          id: 'rec-2',
-          type: 'PROTECT',
-          badge: 'FRAUD SHIELD',
-          title: 'Review online transaction limit',
-          description: 'Lock your virtual card to ₹15,000 to prevent unauthorized high-ticket e-commerce debits.',
-          actionLabel: 'Go to Protection',
-          actionRoute: '/app/protection',
-          actionType: 'navigate',
-          reasoning: 'An unverified international merchant ping was flagged recently. Restricting limits protects your main HDFC account.',
-        },
-        {
-          id: 'rec-3',
-          type: 'DO_NOTHING',
-          badge: 'RESPONSIBLE AI',
-          title: 'No credit products recommended',
-          description: 'You currently have sufficient liquidity for your planned commitments. Taking unnecessary loans or BNPL would add friction.',
-          reasoning: 'Vani-Fi strictly suppresses loan and credit offers when your current cashflow is healthy and does not require borrowing.',
-        },
-      ]
-    } else {
-      return [
-        {
-          id: 'rec-stress-1',
-          type: 'ASSIST',
-          badge: 'ASSISTANCE REQUIRED',
-          title: 'Restructure upcoming college fees schedule',
-          description: 'Rather than taking an emergency personal loan at 16%, split the ₹50,000 fee into 2 instalments with college zero-cost support.',
-          actionLabel: 'Review options',
-          actionRoute: '/app/loans',
-          actionType: 'navigate',
-          reasoning: 'Upcoming commitments will deplete your safe-to-spend balance in 14 days. Immediate cash preservation is advised.',
-        },
-        {
-          id: 'rec-stress-2',
-          type: 'WARN',
-          badge: 'CAUTION: OVER-LEVERAGING',
-          title: 'Pause discretionary spending and new credit',
-          description: 'Debt obligations already consume 46% of your monthly cash flow. New credit card applications should be avoided.',
-          actionLabel: 'View Commitments',
-          actionRoute: '/app/commitments',
-          actionType: 'navigate',
-          reasoning: 'Taking new loans under financial stress leads to debt spirals. Vani-Fi prioritizes your long-term security.',
-        },
-        {
-          id: 'rec-stress-3',
-          type: 'DO_NOTHING',
-          badge: 'ETHICAL GUARDRAIL',
-          title: 'Loan sales suppressed by Vani-Fi guardrail',
-          description: 'Commercial loan offers are disabled for this account because debt load is high. We will help you navigate current bills first.',
-          reasoning: 'Our non-predatory commitment ensures we never sell credit to customers showing active financial distress signals.',
-        },
-      ]
-    }
-  }, [stressLevel])
+  const recommendations = useMemo(() => getNextBestActions({
+    pulse: pulseMetrics,
+    safeToSpend,
+    stressLevel,
+    currentBalance,
+    commitments: commitments.map(commitment => ({
+      ...commitment,
+      confidence: commitment.priority === 'Recurring' ? 'RECURRING' as const : 'CONFIRMED' as const,
+    })),
+    pendingFraud: fraudAlerts.some(alert => alert.status === 'pending'),
+  }).map(({ priority: _priority, ...recommendation }) => recommendation), [pulseMetrics, safeToSpend, stressLevel, currentBalance, commitments, fraudAlerts])
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -544,29 +576,20 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       setVoiceState('UNDERSTANDING')
 
       setTimeout(() => {
-        if (samplePrompt.toLowerCase().includes('college') || samplePrompt.toLowerCase().includes('fees') || samplePrompt.includes('फीस')) {
+        const parsed = parseVoiceIntent(samplePrompt)
+        if (parsed.intent === 'create_commitment') {
           setVoicePayload({
-            intent: 'create_commitment',
+            intent: parsed.intent,
             rawText: samplePrompt,
-            category: 'Education',
-            amount: 50000,
-            dueDate: '18 Oct 2026',
-            priority: 'High priority',
-            spokenConfirmation: 'आपकी बेटी की कॉलेज फीस ₹50,000 की 18 अक्टूबर के लिए पहचान ली गई है। क्या मैं इसे एक आगामी जिम्मेदारी के रूप में सुरक्षित कर दूं?',
+            category: parsed.category,
+            amount: parsed.amount,
+            dueDate: parsed.dueDate,
+            missingFields: parsed.missingFields,
+            priority: parsed.confidence === 'RECURRING' ? 'Recurring' : 'High priority',
+            spokenConfirmation: parsed.spokenConfirmation,
           })
-          setVoiceState('CONFIRMATION_REQUIRED')
-        } else if (samplePrompt.toLowerCase().includes('rent') || samplePrompt.includes('किराया')) {
-          setVoicePayload({
-            intent: 'create_commitment',
-            rawText: samplePrompt,
-            category: 'Housing',
-            amount: 18000,
-            dueDate: '01 Nov 2026',
-            priority: 'Recurring',
-            spokenConfirmation: 'I identified an upcoming apartment rent commitment of ₹18,000 for 1st November. Shall I reserve this in your safe-to-spend plan?',
-          })
-          setVoiceState('CONFIRMATION_REQUIRED')
-        } else if (samplePrompt.toLowerCase().includes('safe') || samplePrompt.includes('spend') || samplePrompt.includes('खर्च')) {
+          setVoiceState(parsed.missingFields?.length ? 'CLARIFICATION_REQUIRED' : 'CONFIRMATION_REQUIRED')
+        } else if (parsed.intent === 'check_safe_to_spend') {
           setVoicePayload({
             intent: 'check_safe_to_spend',
             rawText: samplePrompt,
@@ -586,16 +609,19 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   }
 
   const confirmVoiceAction = () => {
-    if (!voicePayload) return
+    if (!voicePayload || voicePayload.missingFields?.length || !voicePayload.amount || !voicePayload.dueDate) return
     setVoiceState('ACTION')
 
     setTimeout(() => {
       if (voicePayload.intent === 'create_commitment' && voicePayload.amount) {
+        const category: Commitment['category'] = ['Education', 'Housing', 'Insurance', 'Bills', 'Family'].includes(voicePayload.category || '')
+          ? voicePayload.category as Commitment['category']
+          : 'Family'
         addCommitment({
           title: voicePayload.category === 'Education' ? 'College fee (Voice created)' : 'Rent commitment (Voice created)',
           dueDate: voicePayload.dueDate || 'Next month',
           amount: voicePayload.amount,
-          category: (voicePayload.category as any) || 'Family',
+          category,
           priority: voicePayload.priority || 'High priority',
           notes: `Created via vernacular voice: "${voicePayload.rawText}"`,
         })
@@ -616,6 +642,16 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     showToast(`Language set to ${lang}`)
   }
 
+  const updateConsent = (updates: Partial<ConsentState>) => {
+    setConsent(previous => ({ ...previous, ...updates }))
+    showToast('Consent preferences updated for this demo')
+  }
+
+  const updateProfile = (updates: Partial<UserProfile>) => {
+    setProfile(previous => ({ ...previous, ...updates }))
+    showToast('Profile updated for this demo')
+  }
+
   const t = (key: keyof typeof translations['English']): string => {
     return translations[language]?.[key] || translations['English'][key] || (key as string)
   }
@@ -628,7 +664,9 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         expectedIncome,
         totalUpcomingCommitments,
         pulseScore,
+        pulseBand: pulseMetrics.band,
         pulseMomentum,
+        pulseDrivers: pulseMetrics.drivers,
         metrics,
         commitments,
         addCommitment,
@@ -653,6 +691,10 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         language,
         setLanguage,
         t,
+        consent,
+        updateConsent,
+        profile,
+        updateProfile,
         voiceState,
         voicePayload,
         startVoiceListening,

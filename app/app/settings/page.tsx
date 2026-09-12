@@ -16,6 +16,7 @@ import {
 import { useFinancial } from '@/lib/financial-context'
 import { Language } from '@/lib/translations'
 import { ConsentManagerModal } from '@/components/modals/consent-manager-modal'
+import { ReportIssueModal } from '@/components/modals/report-issue-modal'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -25,15 +26,22 @@ export default function SettingsPage() {
     stressLevel,
     setStressLevel,
     showToast,
+    consent,
+    updateConsent,
+    t,
+    profile,
+    updateProfile,
   } = useFinancial()
 
   const [consentModalOpen, setConsentModalOpen] = useState(false)
-  const [voiceEnabled, setVoiceEnabled] = useState(true)
+  const voiceEnabled = consent.voice
   const [biometricsEnabled, setBiometricsEnabled] = useState(true)
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [profileDraft, setProfileDraft] = useState(profile)
+  const [supportOpen, setSupportOpen] = useState(false)
 
   const toggleVoice = () => {
-    setVoiceEnabled(v => !v)
-    showToast(voiceEnabled ? 'Voice responses muted' : 'Voice responses enabled')
+    updateConsent({ voice: !voiceEnabled })
   }
 
   const toggleBiometrics = () => {
@@ -52,9 +60,20 @@ export default function SettingsPage() {
       <section className="settings-profile">
         <div className="avatar large">RS</div>
         <div>
-          <span className="soft-label">YOUR PROFILE</span>
-          <h2>Riya Sharma</h2>
-          <p>riya.sharma@email.com · +91 98765 43210</p>
+          <span className="soft-label">{t('profile')}</span>
+          <h2>{profile.name}</h2>
+          <p>{profile.email} · {profile.phone}</p>
+          {editingProfile ? (
+            <form className="settings-profile-edit" onSubmit={e => { e.preventDefault(); updateProfile(profileDraft); setEditingProfile(false) }}>
+              <label className="field-label" htmlFor="profile-name">Name</label>
+              <input id="profile-name" className="entry-input" value={profileDraft.name} onChange={e => setProfileDraft({ ...profileDraft, name: e.target.value })} required />
+              <label className="field-label" htmlFor="profile-email">Email</label>
+              <input id="profile-email" className="entry-input" type="email" value={profileDraft.email} onChange={e => setProfileDraft({ ...profileDraft, email: e.target.value })} required />
+              <div className="modal-actions"><button type="button" className="ghost-button" onClick={() => { setProfileDraft(profile); setEditingProfile(false) }}>Cancel</button><button type="submit" className="button teal-button">Save profile</button></div>
+            </form>
+          ) : (
+            <button className="ghost-button" onClick={() => setEditingProfile(true)}>Edit profile</button>
+          )}
         </div>
       </section>
 
@@ -66,7 +85,7 @@ export default function SettingsPage() {
             <div className="setting-label-icon">
               <Globe size={18} className="teal" />
               <div>
-                <strong>Preferred Language</strong>
+                <strong>{t('preferredLanguage')}</strong>
                 <small>Select your vernacular comfort</small>
               </div>
             </div>
@@ -90,7 +109,7 @@ export default function SettingsPage() {
             <div className="setting-label-icon">
               <Sliders size={18} className="amber" />
               <div>
-                <strong>Hackout Demo Mode</strong>
+                <strong>{t('demoMode')}</strong>
                 <small>Simulate customer financial condition to test Responsible AI</small>
               </div>
             </div>
@@ -125,7 +144,7 @@ export default function SettingsPage() {
           <div className="setting-label-icon">
             <ShieldCheck size={18} className="teal" />
             <div>
-              <strong>Data Permissions & Consent</strong>
+              <strong>{t('dataPermissions')}</strong>
               <small>Manage Account Aggregator connectivity</small>
             </div>
           </div>
@@ -139,7 +158,7 @@ export default function SettingsPage() {
           <div className="setting-label-icon">
             <Smartphone size={18} className="teal" />
             <div>
-              <strong>Voice & Audio Prompts</strong>
+                <strong>{t('voiceAudio')}</strong>
               <small>Enable spoken vernacular playback for commitments</small>
             </div>
           </div>
@@ -158,7 +177,7 @@ export default function SettingsPage() {
           <div className="setting-label-icon">
             <LockKeyhole size={18} className="teal" />
             <div>
-              <strong>Biometric Security (Face ID / UPI PIN)</strong>
+                <strong>{t('biometricSecurity')} (Face ID / UPI PIN)</strong>
               <small>Mandatory for loan confirmations and transfers</small>
             </div>
           </div>
@@ -191,10 +210,16 @@ export default function SettingsPage() {
         <LockKeyhole size={14} /> Vani-Fi is built with consent, clarity, and your control at the centre.
       </p>
 
+      <div className="settings-support-row">
+        <div><strong>Help & support</strong><small>Open a demo support case with the security desk.</small></div>
+        <button className="ghost-button" onClick={() => setSupportOpen(true)}>Contact support</button>
+      </div>
+
       <ConsentManagerModal
         isOpen={consentModalOpen}
         onClose={() => setConsentModalOpen(false)}
       />
+      <ReportIssueModal isOpen={supportOpen} onClose={() => setSupportOpen(false)} />
     </>
   )
 }

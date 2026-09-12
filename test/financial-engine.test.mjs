@@ -165,6 +165,53 @@ test('Next Best Action: Stressed customer SUPPRESSES loans and recommends ASSIST
   assert.ok(warn, 'Must provide WARN caution against overleveraging')
 })
 
+test('Financial Pulse: Live inputs change score and expose deterministic drivers', () => {
+  const healthy = calculateFinancialPulse({
+    currentBalance: 100000,
+    safeToSpend: 80000,
+    monthlyIncome: 50000,
+    transactions: [
+      { amount: 50000, type: 'income' },
+      { amount: -2000, type: 'expense' },
+      { amount: 45000, type: 'income' },
+    ],
+    commitments: [],
+  })
+  const pressured = calculateFinancialPulse({
+    currentBalance: 100000,
+    safeToSpend: 10000,
+    monthlyIncome: 50000,
+    transactions: [
+      { amount: 50000, type: 'income' },
+      { amount: -30000, type: 'expense' },
+    ],
+    commitments: [
+      { id: '1', title: 'Fee', amount: 70000, savedAmount: 0, dueDate: 'Soon', confidence: 'CONFIRMED', status: 'confirmed', category: 'Education' },
+    ],
+  })
+  assert.ok(healthy.score > pressured.score)
+  assert.ok(pressured.drivers.length >= 3)
+  assert.strictEqual(pressured.liquidity, 'weak')
+})
+
+test('Next Best Action: Pending fraud produces PROTECT without financial stress', () => {
+  const healthyPulse = calculateFinancialPulse({
+    currentBalance: 100000,
+    safeToSpend: 80000,
+    commitments: [],
+  })
+  const pulse = calculateFinancialPulse({
+    currentBalance: 100000,
+    safeToSpend: 80000,
+    commitments: [],
+    pendingFraud: true,
+  })
+  const actions = getNextBestActions({ pulse, safeToSpend: 80000, currentBalance: 100000, stressLevel: 'healthy', pendingFraud: true })
+  assert.ok(actions.some(a => a.type === 'PROTECT'))
+  assert.strictEqual(pulse.debtLoad, 'low')
+  assert.strictEqual(pulse.score, healthyPulse.score)
+})
+
 // 4. Vernacular Voice NLP parsing (Section 15)
 test('Voice Intent: Extracts Hindi college fees commitment correctly', () => {
   const intent = parseVoiceIntent('मेरी बेटी की कॉलेज फीस अगले महीने पचास हजार है')
@@ -184,6 +231,19 @@ test('Voice Intent: Extracts English rent commitment correctly', () => {
 test('Voice Intent: Resolves Safe-to-Spend inquiry', () => {
   const intent = parseVoiceIntent('How much can I safely spend today?')
   assert.strictEqual(intent.intent, 'check_safe_to_spend')
+})
+
+test('Voice Intent: Missing amount requires clarification', () => {
+  const intent = parseVoiceIntent('Fees deni hai')
+  assert.strictEqual(intent.intent, 'create_commitment')
+  assert.strictEqual(intent.amount, undefined)
+  assert.deepStrictEqual(intent.missingFields, ['amount', 'dueDate'])
+})
+
+test('Voice Intent: Numeric hazaar amount is normalized safely', () => {
+  const intent = parseVoiceIntent('Meri beti ki college fees agle mahine 50 hazaar hai')
+  assert.strictEqual(intent.amount, 50000)
+  assert.strictEqual(intent.confidence, 'CONFIRMED')
 })
 
 console.log('=====================================================')

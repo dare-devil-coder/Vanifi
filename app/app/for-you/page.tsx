@@ -7,7 +7,7 @@ import { useFinancial, Recommendation } from '@/lib/financial-context'
 
 export default function ForYouPage() {
   const router = useRouter()
-  const { recommendations, stressLevel, setStressLevel, showToast } = useFinancial()
+  const { recommendations, pulseScore, stressLevel, setStressLevel, showToast, t } = useFinancial()
   const [selectedReasoning, setSelectedReasoning] = useState<Recommendation | null>(null)
 
   const toggleStress = () => {
@@ -20,8 +20,8 @@ export default function ForYouPage() {
     <>
       <section className="for-you-head">
         <div>
-          <span className="soft-label">RESPONSIBLE NEXT BEST ACTION</span>
-          <h2>Only what is truly useful right now.</h2>
+          <span className="soft-label">{t('responsibleNextBestAction')}</span>
+          <h2>{t('onlyUseful')}</h2>
           <p>
             Every recommendation is generated from your real cashflow signals. When you are under pressure, Vani-Fi strictly suppresses sales.
           </p>
@@ -32,7 +32,7 @@ export default function ForYouPage() {
           onClick={toggleStress}
           title="Toggle between healthy customer and stressed customer to see ethical AI behavior"
         >
-          Simulate: {stressLevel === 'healthy' ? 'Customer Under Stress' : 'Healthy Customer'}
+          {t('simulateStress')}: {stressLevel === 'healthy' ? t('testStress') : t('testHealthy')}
         </button>
       </section>
 
@@ -42,7 +42,7 @@ export default function ForYouPage() {
           <div className="state-banner-content">
             <Sparkles size={20} className="teal" />
             <div>
-              <strong>Healthy Cashflow Detected (Score: 82)</strong>
+              <strong>{t('healthyCashflow')} (Score: {pulseScore})</strong>
               <p>Recommending goal-based savings buffers and security enhancements. No predatory credit offers.</p>
             </div>
           </div>
@@ -50,7 +50,7 @@ export default function ForYouPage() {
           <div className="state-banner-content">
             <AlertTriangle size={20} className="coral" />
             <div>
-              <strong>Financial Stress Guardrail Active (Score: 48)</strong>
+              <strong>{t('stressGuardrail')} (Score: {pulseScore})</strong>
               <p>Commercial loan & credit card promotions are explicitly blocked. Showing assistance and budget pacing.</p>
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function ForYouPage() {
                   className="why-button"
                   onClick={() => setSelectedReasoning(rec)}
                 >
-                  <HelpCircle size={13} /> Why am I seeing this?
+                  <HelpCircle size={13} /> {t('whySeeing')}
                 </button>
               </div>
             </article>
@@ -134,7 +134,7 @@ export default function ForYouPage() {
                 className="button teal-button"
                 onClick={() => setSelectedReasoning(null)}
               >
-                Got it
+                {t('gotIt')}
               </button>
             </div>
           </div>

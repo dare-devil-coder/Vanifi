@@ -5,7 +5,7 @@ import { Sparkles, ArrowRight, ShieldCheck, TrendingUp, AlertTriangle } from 'lu
 import { useFinancial } from '@/lib/financial-context'
 
 export default function FinancialPulsePage() {
-  const { pulseScore, pulseMomentum, metrics, stressLevel, setStressLevel, showToast } = useFinancial()
+  const { pulseScore, pulseBand, pulseMomentum, pulseDrivers, metrics, stressLevel, setStressLevel, showToast, t } = useFinancial()
 
   // Animated score counter for smooth score entrance
   const [displayScore, setDisplayScore] = useState(0)
@@ -44,9 +44,9 @@ export default function FinancialPulsePage() {
         <section className="pulse-main panel">
           <div className="pulse-header">
             <div>
-              <span className="soft-label">FINANCIAL HEALTH BENCHMARK</span>
-              <h2>{pulseMomentum}</h2>
-              <p>Continuous evaluation of your cashflow volatility, debt ratio, and reserve cushion.</p>
+              <span className="soft-label">{t('financialHealth')}</span>
+              <h2>{pulseBand === 'excellent' || pulseBand === 'healthy' ? 'Healthy financial momentum' : pulseBand === 'watch' ? 'A little more breathing room would help' : 'Financial pressure needs attention'}</h2>
+              <p>{t('continuousEvaluation')}</p>
             </div>
             <div className="big-score">
               <strong>{displayScore}</strong>
@@ -65,17 +65,17 @@ export default function FinancialPulsePage() {
             <svg viewBox="0 0 600 180" preserveAspectRatio="none">
               <path
                 d={
-                  stressLevel === 'healthy'
+                  pulseScore >= 60
                     ? 'M0 135 C70 130 75 105 140 116 S210 75 265 95 S330 35 390 65 S450 55 500 30 S560 55 600 18'
                     : 'M0 60 C70 80 140 90 210 110 S330 130 390 140 S500 155 600 165'
                 }
                 fill="none"
-                stroke={stressLevel === 'healthy' ? '#0d7870' : '#dd7868'}
+                stroke={pulseScore >= 60 ? '#0d7870' : '#dd7868'}
                 strokeWidth="4"
               />
               <path
                 d={
-                  stressLevel === 'healthy'
+                  pulseScore >= 60
                     ? 'M0 135 C70 130 75 105 140 116 S210 75 265 95 S330 35 390 65 S450 55 500 30 S560 55 600 18 V180 H0Z'
                     : 'M0 60 C70 80 140 90 210 110 S330 130 390 140 S500 155 600 165 V180 H0Z'
                 }
@@ -84,7 +84,7 @@ export default function FinancialPulsePage() {
               />
               <defs>
                 <linearGradient id="pulseFill" x1="0" x2="0" y1="0" y2="1">
-                  <stop stopColor={stressLevel === 'healthy' ? '#0d7870' : '#dd7868'} />
+                    <stop stopColor={pulseScore >= 60 ? '#0d7870' : '#dd7868'} />
                   <stop offset="1" stopColor="#e0f7f0" stopOpacity="0" />
                 </linearGradient>
               </defs>
@@ -102,25 +102,25 @@ export default function FinancialPulsePage() {
         {/* Dynamic Metric Breakdown Cards */}
         <div className="pulse-metrics">
           <div className="metric-card">
-            <span>Liquidity Buffer</span>
+            <span>{t('liquidityBuffer')}</span>
             <strong className={metrics.liquidity.tone}>{metrics.liquidity.value}</strong>
             <small>{metrics.liquidity.detail}</small>
           </div>
 
           <div className="metric-card">
-            <span>Income Stability</span>
+            <span>{t('incomeStability')}</span>
             <strong className={metrics.incomeStability.tone}>{metrics.incomeStability.value}</strong>
             <small>{metrics.incomeStability.detail}</small>
           </div>
 
           <div className="metric-card">
-            <span>Debt Obligations</span>
+            <span>{t('debtObligations')}</span>
             <strong className={metrics.debtLoad.tone}>{metrics.debtLoad.value}</strong>
             <small>{metrics.debtLoad.detail}</small>
           </div>
 
           <div className="metric-card">
-            <span>Protection Shield</span>
+            <span>{t('protectionShield')}</span>
             <strong className={metrics.protection.tone}>{metrics.protection.value}</strong>
             <small>{metrics.protection.detail}</small>
           </div>
@@ -131,24 +131,22 @@ export default function FinancialPulsePage() {
       <section className="insight-card">
         <Sparkles size={22} />
         <div>
-          <span className="soft-label">VANI NOTICED</span>
+          <span className="soft-label">{t('noticed')}</span>
           <h3>
-            {stressLevel === 'healthy'
-              ? 'Your savings rhythm is outpacing your quarterly benchmark'
-              : 'Debt repayments are outpacing safe discretionary cashflow'}
+            {pulseBand === 'healthy' || pulseBand === 'excellent'
+              ? 'Your current position can support a calmer savings rhythm'
+              : 'Your available flexibility needs attention'}
           </h3>
           <p>
-            {stressLevel === 'healthy'
-              ? 'You saved 12% more this month than your 3-month average. Keeping this pace will fully insulate your college fee and term insurance commitments without touching reserves.'
-              : 'With 46% of cashflow dedicated to fixed commitments, discretionary spending should be paused to protect essential household liquidity.'}
+            {pulseDrivers[0]} {pulseDrivers[1]}
           </p>
         </div>
         <button
           className="button mint-button"
           onClick={toggleStress}
-          title="Toggle between healthy and stressed user states to test explainable AI behavior"
+          title="Demo-only override for testing responsible AI behavior"
         >
-          Toggle Demo State ({stressLevel === 'healthy' ? 'Test Stress' : 'Test Healthy'})
+          {t('demoOverride')}: {stressLevel === 'healthy' ? t('testStress') : t('testHealthy')}
         </button>
       </section>
     </>

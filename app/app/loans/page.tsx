@@ -18,7 +18,7 @@ import { useFinancial } from '@/lib/financial-context'
 import { submitLoanApplicationService, verifyOtp } from '@/services/mock-api'
 
 export default function LoansPage() {
-  const { safeToSpend, submitLoanApplication, showToast } = useFinancial()
+  const { safeToSpend, submitLoanApplication, showToast, stressLevel } = useFinancial()
 
   const [step, setStep] = useState<number>(0)
   const [purpose, setPurpose] = useState('Education & Planned Expense')
@@ -116,6 +116,41 @@ export default function LoansPage() {
       setIsSubmitting(false)
       setOtpError(err.message || 'Verification failed. Try again.')
     }
+  }
+
+  if (stressLevel === 'stressed') {
+    return (
+      <section className="loan-flow">
+        <div className="loan-panel centered loan-guardrail" role="alert">
+          <div className="loan-alert">
+            <div className="warning-icon">!</div>
+            <div>
+              <b>New borrowing is paused for your safety</b>
+              <p>
+                Aapki current financial situation ko dekhte hue naya loan lena abhi risk badha sakta hai. We can help you review safer options first.
+              </p>
+            </div>
+          </div>
+
+          <h2>Let&apos;s protect your financial flexibility.</h2>
+          <p>
+            Commercial credit offers are suppressed while financial stress is active. Your existing money and commitments remain unchanged.
+          </p>
+
+          <div className="step-actions-center">
+            <Link href="/app/for-you" className="button teal-button">
+              View support options <ArrowRight size={16} />
+            </Link>
+            <Link href="/app/commitments" className="ghost-button">
+              Review commitments
+            </Link>
+            <Link href="/app/assistant" className="ghost-button">
+              Talk to Vani
+            </Link>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   return (
