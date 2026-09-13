@@ -294,6 +294,49 @@ export function getNextBestActions({
 }
 
 /**
+ * Helper to resolve relative and ordinal dates (e.g., '11th of next month', '15 Oct', 'next month')
+ */
+export function extractDueDateFromText(rawText: string): string | undefined {
+  const lower = rawText.toLowerCase()
+  const now = new Date()
+  const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const nextMonthName = nextMonthDate.toLocaleString('en-IN', { month: 'short' })
+  const currentMonthName = now.toLocaleString('en-IN', { month: 'short' })
+
+  // Match pattern like "11th of next month", "11 next month", "अगले महीने की 11 तारीख", "11 तारीख"
+  const ordinalDayMatch = lower.match(/(\d{1,2})(?:st|nd|rd|th)?(?:\s+(?:of\s+)?(?:next\s+month|अगले\s+महीने|agle\s+mahine))|(?:\b(?:next\s+month|अगले\s+महीने|agle\s+mahine)\s+(?:की\s+)?(\d{1,2})(?:st|nd|rd|th|\s*तारीख)?)/i)
+  if (ordinalDayMatch) {
+    const day = ordinalDayMatch[1] || ordinalDayMatch[2]
+    if (day) {
+      const paddedDay = day.padStart(2, '0')
+      return `${paddedDay} ${nextMonthName}`
+    }
+  }
+
+  // Match pattern like "11th" or "11 तारीख" with next month mentioned anywhere
+  const hasNextMonth = /next month|अगले महीने|अगले माह|agle mahine/i.test(rawText)
+  const standaloneDayMatch = lower.match(/\b(\d{1,2})(?:st|nd|rd|th|\s*तारीख|\s*tarikh)\b/i)
+  if (hasNextMonth && standaloneDayMatch && standaloneDayMatch[1]) {
+    const day = standaloneDayMatch[1].padStart(2, '0')
+    return `${day} ${nextMonthName}`
+  }
+
+  // Match explicit date like "15 Oct", "18 October", "12 Nov"
+  const explicitMonthMatch = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i)
+  if (explicitMonthMatch) {
+    const day = explicitMonthMatch[1].padStart(2, '0')
+    const month = explicitMonthMatch[2].charAt(0).toUpperCase() + explicitMonthMatch[2].slice(1).toLowerCase()
+    return `${day} ${month}`
+  }
+
+  if (hasNextMonth) {
+    return `01 ${nextMonthName}`
+  }
+
+  return undefined
+}
+
+/**
  * Parses vernacular voice intents deterministically.
  */
 export function parseVoiceIntent(rawText: string): {
@@ -306,6 +349,7 @@ export function parseVoiceIntent(rawText: string): {
   spokenConfirmation: string
 } {
   const lower = rawText.toLowerCase()
+  const detectedDate = extractDueDateFromText(rawText)
 
   if (lower.includes('college') || lower.includes('fees') || rawText.includes('फीस') || rawText.includes('कॉलेज')) {
     const numericAmount = lower.match(/(?:₹|rs\.?\s*)?([0-9][0-9,]*)/i)?.[1]
@@ -313,16 +357,17 @@ export function parseVoiceIntent(rawText: string): {
     const amount = parsedNumericAmount
       ? /हजार|hazaar|hazar|thousand/i.test(rawText) ? parsedNumericAmount * 1000 : parsedNumericAmount
       : /पचास\s*हजार|pachaas\s*hazar|fifty\s*thousand/i.test(rawText) ? 50000 : undefined
-    const hasNextMonth = /next month|अगले महीने|अगले माह|agle mahine/i.test(rawText)
+
+    const dueDate = detectedDate
     const missingFields: Array<'amount' | 'dueDate'> = []
     if (!amount) missingFields.push('amount')
-    if (!hasNextMonth) missingFields.push('dueDate')
+    if (!dueDate) missingFields.push('dueDate')
     if (missingFields.length > 0) {
       return {
         intent: 'create_commitment',
         category: 'Education',
         amount,
-        dueDate: hasNextMonth ? 'Next month' : undefined,
+        dueDate,
         missingFields,
         confidence: 'ESTIMATED',
         spokenConfirmation: missingFields.includes('amount')
@@ -334,9 +379,9 @@ export function parseVoiceIntent(rawText: string): {
       intent: 'create_commitment',
       category: 'Education',
       amount,
-      dueDate: 'Next month',
+      dueDate,
       confidence: 'CONFIRMED',
-      spokenConfirmation: 'Aapne bataya ki agle mahine college fees ke liye ₹50,000 dene hain. Kya main ise upcoming expense ke roop mein save kar doon?',
+      spokenConfirmation: `Aapne bataya ki ${dueDate} ko college fees ke liye ₹${amount?.toLocaleString('en-IN')} dene hain. Kya main ise upcoming expense ke roop mein save kar doon?`,
     }
   }
 
@@ -346,16 +391,17 @@ export function parseVoiceIntent(rawText: string): {
     const amount = parsedNumericAmount
       ? /हजार|hazaar|hazar|thousand/i.test(rawText) ? parsedNumericAmount * 1000 : parsedNumericAmount
       : undefined
-    const hasNextMonth = /next month|अगले महीने|अगले माह|agle mahine/i.test(rawText)
+
+    const dueDate = detectedDate
     const missingFields: Array<'amount' | 'dueDate'> = []
     if (!amount) missingFields.push('amount')
-    if (!hasNextMonth) missingFields.push('dueDate')
+    if (!dueDate) missingFields.push('dueDate')
     if (missingFields.length > 0) {
       return {
         intent: 'create_commitment',
         category: 'Housing',
         amount,
-        dueDate: hasNextMonth ? 'Next month' : undefined,
+        dueDate,
         missingFields,
         confidence: 'ESTIMATED',
         spokenConfirmation: missingFields.includes('amount')
@@ -367,9 +413,9 @@ export function parseVoiceIntent(rawText: string): {
       intent: 'create_commitment',
       category: 'Housing',
       amount,
-      dueDate: 'Next month',
+      dueDate,
       confidence: 'RECURRING',
-      spokenConfirmation: 'I identified rent of ₹18,000 for next month. Shall I reserve this in your safe-to-spend plan?',
+      spokenConfirmation: `I identified rent of ₹${amount?.toLocaleString('en-IN')} due on ${dueDate}. Shall I reserve this in your safe-to-spend plan?`,
     }
   }
 

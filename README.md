@@ -1,105 +1,214 @@
-# Vani-Fi — Financial Intelligence for Bharat 🇮🇳
+# Vani-Fi (वाणी-Fi) 🇮🇳
+### Responsible Hyper-Personalized Financial Copilot for Bharat
 
-> **Responsible Hyper-Personalized Financial Copilot for Bharat**  
-> *Built for Hackout 2026*
+[![Next.js](https://img.shields.io/badge/Next.js-16.3.3-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.0-61dafb?style=for-the-badge&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4.0-38bdf8?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com/)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-2.0_Flash-8E75B2?style=for-the-badge&logo=google)](https://deepmind.google/technologies/gemini/)
+[![Sarvam AI](https://img.shields.io/badge/Sarvam_AI-Indic_Voice-FF9933?style=for-the-badge)](https://www.sarvam.ai/)
+[![Pinecone RAG](https://img.shields.io/badge/Pinecone-Vector_RAG-000000?style=for-the-badge)](https://www.pinecone.io/)
+[![RBI Compliance](https://img.shields.io/badge/RBI-KFS_Standardized-138808?style=for-the-badge)](https://www.rbi.org.in/)
+
+> **Vani-Fi** is an AI-driven, vernacular-first financial intelligence ecosystem architected specifically for emerging digital banking users across Bharat (Tier 2, Tier 3, and Tier 4 towns). 
+> 
+> Unlike conventional predatory fintech applications designed to maximize aggressive credit cross-selling and trap vulnerable users in high-interest debt cycles, **Vani-Fi prioritizes financial well-being and knows when NOT to sell a loan**. It pairs real-time cashflow intelligence with voice-driven conversational planning, dynamic safe-to-spend computation, and regulatory-grade RBI Key Fact Statements (KFS).
 
 ---
 
-## 🌟 Overview
+## 🌟 The Core Problem in Bharat's Digital Banking
 
-**Vani-Fi** is an AI-powered financial intelligence platform designed specifically for customers across Bharat (Tier 2, 3, 4 towns and emerging digital banking users). Unlike traditional banking apps that prioritize product cross-selling, Vani-Fi understands the customer's financial situation and determines the most appropriate next financial action — **including when NOT to recommend or sell a financial product**.
+1. **Predatory Credit Pushing**: Most financial platforms nudge loans at every touchpoint, especially targeting financially stressed citizens with high-APR instant credit.
+2. **The "Account Balance Illusion"**: An account balance of ₹25,000 does not mean the user can spend ₹25,000. Rent, school fees, and electricity bills due in 10 days will bounce if funds are spent today.
+3. **The Linguistic & Literacy Barrier**: Standard banking jargon (*APR, compound interest, moratorium, penal charges*) intimidates users who operate comfortably only in Indian languages like Hindi, Gujarati, Marathi, Tamil, or Bengali.
+4. **Opaque Lending Terms**: Critical borrowing clauses, processing fees, and foreclosing penalties remain buried in multi-page English PDFs.
 
 ---
 
-## 🧠 Core Financial Intelligence Layers
+## 💡 The Vani-Fi Innovation & Solutions
 
-1. **Financial Pulse (Health Layer)**: Continuous evaluation of cashflow velocity, liquidity ratios, and debt burdens into an understandable 0–100 benchmark (with clear drivers and explanations).
-2. **Safe-to-Spend (Planning Layer)**: Calculates true discretionary spending capacity:
-   $$\text{Safe-to-Spend} = \text{Liquid Balance} + \text{Confirmed Inflow} - \sum_{\text{confirmed}} (\text{Amount} - \text{Saved}) - \text{Safety Buffer}$$
-3. **Virtual Future Commitments**: Allows users to plan future expenses (college fees, rent, insurance) virtually without locking or moving real bank funds.
-4. **Responsible Next Best Action (Decision Layer)**: Context-sensitive recommendations supporting `OFFER`, `ASSIST`, `PROTECT`, `WARN`, and `DO_NOTHING`. Commercial credit is programmatically suppressed during financial distress.
-5. **Vernacular Voice AI (Interaction Layer)**: Natural language conversational processing in **Hindi, English, and Gujarati** with explicit confirmation dialogues before financial reservations.
-6. **Transparent Lending & KFS (Governance Layer)**: Standardized RBI Key Facts Statement (KFS) disclosure, vernacular audio explanations, interactive comprehension quizzes, and a statutory 3-day penalty-free cool-off window.
-7. **Fraud & Protection (Safety Layer)**: Strict separation of financial stress (liquidity pressure) from anomalous fraud events, offering merchant blocking and card freezes.
+```
++-----------------------------------------------------------------------------------+
+|                                  USER TOUCHPOINT                                  |
+|          Indic Vernacular Voice AI (Hindi, Gujarati, Tamil, English)              |
++-----------------------------------------+-----------------------------------------+
+                                          |
+                                          v
++-----------------------------------------------------------------------------------+
+|                        CORE FINANCIAL REASONING ENGINE                            |
+|                                                                                   |
+|  [ 1. Financial Pulse ]       [ 2. Safe-to-Spend™ ]      [ 3. Virtual Earmark ]   |
+|   0-100 Holistic Health        Liquid Balance minus        Zero-risk planning     |
+|   Velocity & Debt Metric       Future Commitments          without lock-in fees   |
++-----------------------------------------+-----------------------------------------+
+                                          |
+                                          v
++-----------------------------------------------------------------------------------+
+|                     RESPONSIBLE NEXT BEST ACTION (NBA) GUARD                      |
+|                                                                                   |
+|   OFFER (Buffer)  |  ASSIST (Restructure)  |  WARN (Pause)  |  DO_NOTHING (Safety)|
+|   >>> Commercial credit is PROGRAMMATICALLY SUPPRESSED during financial distress <<< |
++-----------------------------------------+-----------------------------------------+
+                                          |
+                                          v
++-----------------------------------------------------------------------------------+
+|                       REGULATORY & COMPREHENSION SHIELD                           |
+|                                                                                   |
+|   * Standardized RBI Key Facts Statement (KFS)                                    |
+|   * Audio Vernacular Breakdown of Total Cost of Credit                            |
+|   * Interactive Borrower Comprehension Quiz before OTP Authorisation              |
+|   * Statutory 3-Day Penalty-Free Cool-off Cancellation Window                     |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+## 🚀 Key Architectural Features
+
+### 1. 🛡️ Dynamic Safe-to-Spend™ Algorithm
+Prevents accidental overspending and bounced commitments without locking user liquidity in rigid bank deposits.
+$$\text{Safe-to-Spend} = \text{Liquid Balance} + \text{Confirmed Inflows} - \sum_{\text{confirmed}} (\text{Commitment Amount} - \text{Saved Amount}) - \text{Safety Buffer}$$
+- **Virtual Earmarking**: Allocate funds for "Daughter's School Fees" or "Shop Inventory" without penalties or freezing accounts.
+- **Dynamic Cashflow Adjustment**: Instantaneous recalculation upon any incoming UPI transfer or outgoing expense.
+
+### 2. 🗣️ Indic Vernacular Voice Engine (Sarvam AI + Google Gemini)
+- **Natural Voice Input**: Speak freely in native dialects (e.g., *"मेरी बेटी की कॉलेज फीस अगले महीने पचास हजार है"*).
+- **Multilingual Intent Parsing**: Automatically categorizes commitments, extracts monetary values, maps target dates, and normalizes colloquial numbers (e.g., *"पचास हज़ार"* $\rightarrow$ `₹50,000`).
+- **Explicit Verbal Confirmation**: Never executes an earmark or transaction without repeating the terms in the user's native tongue and confirming consent.
+
+### 3. ⚖️ Ethical "Next Best Action" (NBA) Decision Engine
+A stateful ethical decision engine that puts customer safety above fintech commissions:
+- `OFFER`: Recommends liquid emergency buffers and micro-savings only when cashflow is healthy.
+- `ASSIST`: Guides users to restructure payment dates when commitments overlap.
+- `WARN`: Flags impending overdrafts and recommends pausing non-essential expenses.
+- `PROTECT`: Instantly alerts against suspicious merchant anomalies and freezes credentials.
+- `DO_NOTHING`: **The Golden Rule** — Strictly halts all loan marketing and commercial credit offers when the customer's Financial Pulse indicates distress.
+
+### 4. 📜 Transparent RBI Key Facts Statement (KFS) & Borrowing Literacy
+- **Standardized KFS Breakdown**: Plain-text breakdown of Principal, Processing Fees, Net Disbursal, APR, and Total Repayment Amount.
+- **Voice Explainability**: Plays an Indic audio narration explaining the exact cost of borrowing.
+- **Mandatory Comprehension Check**: An interactive 2-question quiz ensuring the borrower understands their monthly EMI commitment before disbursal.
+- **3-Day Statutory Cool-off**: Allows users to cancel the loan with zero penalty within 72 hours, adhering to RBI digital lending guidelines.
+
+### 5. 🧠 Hybrid RAG Knowledge Engine (Pinecone + Gemini 2.0)
+- **Vector Retrieval**: Embeds RBI digital lending master directions, government agricultural subsidies, and PM micro-credit schemes into Pinecone.
+- **Contextual Grounding**: Provides cited, hallucination-free advice in response to user queries about rights, interest rate ceilings, and financial safety.
+
+---
+
+## 📱 Application Routes & User Flow
+
+| Route | Purpose & Capabilities |
+|---|---|
+| `/` | **Landing Page**: Interactive hero, value proposition, feature showcase, and trust pillars. |
+| `/product` | **Product Deep-Dive**: Safe-to-Spend breakdowns and architectural explanations. |
+| `/how-it-works` | **Interactive Methodology**: Visual guide to voice earmarks and ethical lending. |
+| `/trust` | **Security & Privacy**: Account Aggregator standards and zero-misuse guarantee. |
+| `/language` | **Language Selection**: Vernacular onboarding (Hindi, English, Gujarati, Tamil). |
+| `/login` & `/verify` | **Secure Auth**: Phone-based authentication with OTP verification simulation. |
+| `/onboarding` | **Consented Onboarding**: Account Aggregator read-only statement consent. |
+| `/app` | **Main Dashboard**: Real-time Pulse score, Safe-to-Spend display, and quick actions. |
+| `/app/financial-pulse` | **Financial Health Diagnostic**: Score analysis (0–100), liquidity velocity, and DSR drivers. |
+| `/app/money` | **Cashflow Velocity**: Income vs. Expense analysis and timeline simulation. |
+| `/app/commitments` | **Virtual Commitment Manager**: Add, edit, fulfill, or simulate future obligations. |
+| `/app/loans` | **Ethical Borrowing Portal**: Transparent personal and business loans with KFS. |
+| `/app/loans/kfs` | **Standardized Key Facts Statement**: RBI disclosure, APR breakdown, and cool-off rights. |
+| `/app/assistant` | **Vernacular AI Copilot**: Gemini 2.0-powered interactive chat and voice dialog. |
+| `/app/protection` | **Fraud & Stress Separation**: Security shields, merchant limits, and card freeze controls. |
+| `/app/notifications` | **Contextual Alerts**: Actionable warnings and cashflow updates. |
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Framework**: [Next.js 16.3.3](https://nextjs.org/) (App Router, Turbopack)
-- **UI & Runtime**: [React 19](https://react.dev/), [TypeScript 5.7](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/), [tw-animate-css](https://www.npmjs.com/package/tw-animate-css)
-- **Components**: [Base UI Primitives](https://base-ui.com/), [Shadcn UI Nova](https://ui.shadcn.com/), [Lucide React](https://lucide.dev/)
-- **State Management**: Centralized Reactive Financial Context (`lib/financial-context.tsx`)
-- **Testing**: Native Node.js test runner for unit calculation suites and end-to-end demo journeys
+- **Framework**: [Next.js 16.3.3](https://nextjs.org/) (App Router, Turbopack, React Server Components)
+- **Frontend Core**: [React 19](https://react.dev/), [TypeScript 5.7](https://www.typescriptlang.org/)
+- **Styling & Design System**: [Tailwind CSS v4](https://tailwindcss.com/), `@tailwindcss/postcss`, `tw-animate-css`
+- **UI Primitives**: [Base UI](https://base-ui.com/), [Shadcn UI](https://ui.shadcn.com/), [Lucide React](https://lucide.dev/)
+- **Artificial Intelligence**:
+  - **Reasoning**: [Google Gemini 2.0 Flash (`@google/genai`)](https://aistudio.google.com/)
+  - **Indic Voice & TTS**: [Sarvam AI API](https://www.sarvam.ai/) (Saaras Indic Speech-to-Text & Bulbul TTS)
+  - **Vector Retrieval**: [Pinecone Database (`@pinecone-database/pinecone`)](https://www.pinecone.io/)
+- **Testing & Quality Assurance**:
+  - Native Node.js Test Runner (`node --experimental-strip-types`)
+  - End-to-End Persona Verification Suites
+  - Playwright Test Integration (`@playwright/test`)
 
 ---
 
-## 🚀 Quick Start
+## ⚡ Quick Start & Local Setup
 
-### 1. Installation
+### 1. Prerequisites
+- **Node.js**: `v20.x` or `v22.x` recommended
+- **Package Manager**: `npm`, `pnpm`, or `yarn`
+
+### 2. Clone the Repository
 ```bash
-npm install
+git clone https://github.com/dare-devil-coder/Vanifi.git
+cd Vanifi
 ```
 
-### 2. Development Server
+### 3. Install Dependencies
+```bash
+npm install
+# or
+pnpm install
+```
+
+### 4. Configure Environment Variables
+Copy the `.env.example` file to `.env.local`:
+```bash
+cp .env.example .env.local
+```
+Fill in your API credentials:
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+SARVAM_API_KEY=your_sarvam_api_key_here
+PINECONE_API_KEY=your_pinecone_api_key_here
+```
+
+### 5. Launch Development Server
 ```bash
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 3. Run Automated Tests
-```bash
-# Run unit tests for Safe-to-Spend, Financial Pulse & Voice NLP
-npm test
+---
 
-# Run complete Hackout 2026 End-to-End demo scenario
+## 🧪 Automated Testing & Verification
+
+Vani-Fi includes automated regression and mathematical verification test suites:
+
+### Unit Tests (Financial Calculations & NLP)
+Runs 15 automated test assertions covering Safe-to-Spend algebra, Pulse scoring, NBA suppression, and Indic voice parsing:
+```bash
+npm test
+```
+
+### End-to-End Hackout 2026 Journey
+Simulates the complete user scenario from vernacular voice speech input to safe-to-spend recalculation, stressed state credit suppression, and RBI KFS loan authorization:
+```bash
 npm run test:e2e
 ```
 
-### 4. Production Build & Typecheck
+### Production Build & Typecheck
 ```bash
 npm run typecheck
 npm run build
-npm start
+npm run start
 ```
 
 ---
 
-## 🗺️ Application Routes
+## 🏆 Hackout 2026 Innovation Highlights
 
-- **Public**: `/` (Landing), `/product`, `/how-it-works`, `/trust`
-- **Auth & Language**: `/login`, `/verify`, `/language`
-- **Onboarding**: `/onboarding`, `/onboarding/consent`, `/onboarding/connect`
-- **Dashboard & Core**: `/app` (Overview), `/app/financial-pulse`, `/app/money`, `/app/commitments`
-- **Intelligence & Safety**: `/app/for-you`, `/app/protection`, `/app/assistant`
-- **Transparent Borrowing**: `/app/loans`, `/app/loans/apply`, `/app/loans/kfs`, `/app/loans/confirm`
-- **Settings & Notifications**: `/app/notifications`, `/app/settings`
+- **Anti-Predatory AI**: First fintech engine that treats suppressing loans as a primary AI objective function.
+- **Vernacular Dialect Normalization**: Translates colloquial Indic numeric constructs (*"डेढ़ लाख"*, *"पचास हज़ार"*) directly into validated financial models.
+- **Total Regulatory Alignment**: Complies natively with Reserve Bank of India (RBI) Digital Lending Directives, 2022 and 2024 Fair Lending Practices.
 
 ---
 
-## 📜 Hackout 2026 Demo Scenario
+## 📄 License & Attribution
 
-1. **Start**: Liquid Balance = ₹1,00,000, Initial Financial Pulse = 82.
-2. **Vernacular Voice**: Speak or trigger *"मेरी बेटी की कॉलेज फीस अगले महीने पचास हजार है"*.
-3. **Intent Detection**: System detects `Education`, `₹50,000`, and requests confirmation.
-4. **Commitment Created**: User confirms $\rightarrow$ Safe-to-Spend instantly updates to **₹50,000**.
-5. **Cashflow Simulations**:
-   - Inflow (+₹20,000) $\rightarrow$ Balance: ₹1,20,000, Safe-to-Spend: **₹70,000**.
-   - Spending (-₹10,000) $\rightarrow$ Balance: ₹1,10,000, Safe-to-Spend: **₹60,000**.
-6. **Responsible AI Guardrail**:
-   - Toggle to *Stressed State* $\rightarrow$ Commercial loans are **strictly suppressed**.
-   - System recommends budget assistance (`ASSIST`) and safe pacing (`WARN`) rather than selling credit.
-7. **Lending & KFS**: Review standardized loan terms, pass the EMI comprehension check, authorize via OTP, and view the active 3-day cool-off cancellation rights.
-
----
-
-## 🔒 Security & Privacy
-
-- **Account Aggregator Standards**: Read-only financial statements with zero withdrawal capabilities.
-- **Explainable Decisions**: Every recommendation provides a *"Why am I seeing this?"* breakdown.
-- **Accessibility**: Full keyboard navigation, screen reader labels, and `prefers-reduced-motion` compliance.
-
----
-
-*Vani-Fi — Financial Intelligence for Bharat.*
+Designed and developed with ❤️ for **Bharat** by **[dare-devil-coder](https://github.com/dare-devil-coder)** for **Hackout 2026**.
+All rights reserved under the MIT License.

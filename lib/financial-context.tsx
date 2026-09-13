@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react'
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react'
 import { Language, translations } from './translations'
 import { calculateFinancialPulse, calculateSafeToSpend, getNextBestActions, parseVoiceIntent } from './financial/calculations'
 
@@ -172,6 +172,7 @@ interface FinancialContextType {
   voiceState: VoiceState
   voicePayload: VoicePayload | null
   startVoiceListening: () => void
+  stopVoiceListening: () => void
   simulateVoiceInput: (samplePrompt: string) => void
   confirmVoiceAction: () => void
   cancelVoiceAction: () => void
@@ -562,10 +563,83 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     return app
   }
 
-  // Voice Assistant simulation & intent execution
+  // Voice Assistant: Real Web Speech API with continuous listening and simulation fallback
+  const dockRecognitionRef = useRef<any>(null)
+  const dockTranscriptRef = useRef<string>('')
+  const dockPersistedTranscriptRef = useRef<string>('')
+  const isDockListeningRef = useRef<boolean>(false)
+
+  const stopVoiceListening = () => {
+    isDockListeningRef.current = false
+    if (dockRecognitionRef.current) {
+      try {
+        dockRecognitionRef.current.stop()
+      } catch (e) {}
+    }
+    const textToProcess = dockTranscriptRef.current.trim()
+    if (textToProcess) {
+      simulateVoiceInput(textToProcess)
+    } else {
+      setVoiceState('IDLE')
+      showToast('No voice input detected.')
+    }
+  }
+
   const startVoiceListening = () => {
     setVoiceState('LISTENING')
     setVoicePayload(null)
+    dockTranscriptRef.current = ''
+    dockPersistedTranscriptRef.current = ''
+
+    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      try {
+        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        const recognition = new SpeechRec()
+        dockRecognitionRef.current = recognition
+        recognition.lang = language === 'ગુજરાતી' ? 'gu-IN' : language === 'हिन्दी' ? 'hi-IN' : 'en-IN'
+        recognition.continuous = true
+        recognition.interimResults = true
+        isDockListeningRef.current = true
+
+        recognition.onstart = () => {
+          setVoiceState('LISTENING')
+        }
+
+        recognition.onresult = (event: any) => {
+          let sessionText = ''
+          for (let i = 0; i < event.results.length; i++) {
+            const fragment = event.results[i]?.[0]?.transcript || ''
+            sessionText += fragment + ' '
+          }
+          const combined = (dockPersistedTranscriptRef.current ? dockPersistedTranscriptRef.current + ' ' : '') + sessionText
+          dockTranscriptRef.current = combined.replace(/\s+/g, ' ').trim()
+        }
+
+        recognition.onerror = (event: any) => {
+          console.warn('Speech recognition error/not permitted:', event.error)
+          if (event.error === 'not-allowed') {
+            isDockListeningRef.current = false
+            showToast('Microphone access blocked. Please allow mic permissions in browser.')
+            setVoiceState('ERROR')
+          }
+        }
+
+        recognition.onend = () => {
+          if (isDockListeningRef.current) {
+            dockPersistedTranscriptRef.current = dockTranscriptRef.current
+            try {
+              recognition.start()
+            } catch (e) {
+              isDockListeningRef.current = false
+            }
+          }
+        }
+
+        recognition.start()
+      } catch (e) {
+        console.warn('SpeechRecognition failed to start:', e)
+      }
+    }
   }
 
   const simulateVoiceInput = (samplePrompt: string) => {
@@ -575,7 +649,46 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       setVoiceState('UNDERSTANDING')
 
-      setTimeout(() => {
+      setTimeout(async () => {
+        // Try calling Gemini + Sarvam for intent extraction first
+        try {
+          const res = await fetch('/api/gemini/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: samplePrompt,
+              language,
+              financialContext: { currentBalance, safeToSpend }
+            })
+          })
+          if (res.ok) {
+            const data = await res.json()
+            if (data.intentAction?.amount) {
+              setVoicePayload({
+                intent: 'create_commitment',
+                rawText: samplePrompt,
+                category: data.intentAction.category || 'Education',
+                amount: Number(data.intentAction.amount),
+                dueDate: data.intentAction.dueDate || 'Next month',
+                priority: 'High priority',
+                spokenConfirmation: data.vernacularReply || data.replyText || 'खर्च की पुष्टि करें',
+              })
+              setVoiceState('CONFIRMATION_REQUIRED')
+              return
+            } else if (data.replyText) {
+              setVoicePayload({
+                intent: 'general',
+                rawText: samplePrompt,
+                spokenConfirmation: data.vernacularReply || data.replyText,
+              })
+              setVoiceState('COMPLETE')
+              return
+            }
+          }
+        } catch (e) {
+          console.warn('AI voice intent failed, using rule engine:', e)
+        }
+
         const parsed = parseVoiceIntent(samplePrompt)
         if (parsed.intent === 'create_commitment') {
           setVoicePayload({
@@ -632,6 +745,12 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   }
 
   const cancelVoiceAction = () => {
+    isDockListeningRef.current = false
+    if (dockRecognitionRef.current) {
+      try {
+        dockRecognitionRef.current.stop()
+      } catch (e) {}
+    }
     setVoiceState('IDLE')
     setVoicePayload(null)
   }
@@ -698,6 +817,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         voiceState,
         voicePayload,
         startVoiceListening,
+        stopVoiceListening,
         simulateVoiceInput,
         confirmVoiceAction,
         cancelVoiceAction,

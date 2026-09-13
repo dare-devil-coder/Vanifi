@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Mic, X, Check, ArrowRight, Sparkles, AlertCircle, RefreshCw, Volume2 } from 'lucide-react'
+import { Mic, X, Check, ArrowRight, Sparkles, AlertCircle, RefreshCw, Volume2, Square } from 'lucide-react'
 import { useFinancial } from '@/lib/financial-context'
 
 export function VoiceAssistantDock() {
@@ -9,6 +9,7 @@ export function VoiceAssistantDock() {
     voiceState,
     voicePayload,
     startVoiceListening,
+    stopVoiceListening,
     simulateVoiceInput,
     confirmVoiceAction,
     cancelVoiceAction,
@@ -71,13 +72,20 @@ export function VoiceAssistantDock() {
 
             {/* Signature Animated Voice Orb */}
             <div className="voice-orb-container">
-              <div className={`voice-orb-avatar ${voiceState.toLowerCase()}`}>
+              <div
+                className={`voice-orb-avatar ${voiceState.toLowerCase()}`}
+                onClick={voiceState === 'LISTENING' ? stopVoiceListening : undefined}
+                style={{ cursor: voiceState === 'LISTENING' ? 'pointer' : 'default' }}
+                title={voiceState === 'LISTENING' ? 'Click to stop listening and process' : undefined}
+              >
                 {voiceState === 'PROCESSING' || voiceState === 'ACTION' ? (
                   <RefreshCw className="animate-spin" size={32} />
                 ) : voiceState === 'COMPLETE' ? (
                   <Check size={36} />
                 ) : voiceState === 'ERROR' ? (
                   <AlertCircle size={32} />
+                ) : voiceState === 'LISTENING' ? (
+                  <Square size={28} fill="#ffffff" />
                 ) : (
                   <Mic size={34} />
                 )}
@@ -102,8 +110,32 @@ export function VoiceAssistantDock() {
             <div className="voice-dialog-content">
               {voiceState === 'LISTENING' && (
                 <div className="voice-listening-view">
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                    <button
+                      className="button teal-button"
+                      onClick={stopVoiceListening}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '9px 20px',
+                        borderRadius: '24px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        backgroundColor: '#ef4444',
+                        color: '#ffffff',
+                        border: 'none',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 10px rgba(239, 68, 68, 0.4)',
+                      }}
+                      title="Click when you are done speaking"
+                    >
+                      <Square size={13} fill="#ffffff" /> Stop & Process Voice
+                    </button>
+                  </div>
+
                   <p className="voice-prompt-instruction">
-                    Speak naturally in <strong>Hindi, English, or Gujarati</strong>. Or tap an example below:
+                    Speak naturally in <strong>Hindi, English, or Gujarati</strong>. Take breaks if needed — click Stop when finished. Or tap an example:
                   </p>
 
                   <div className="voice-quick-chips">
@@ -161,7 +193,25 @@ export function VoiceAssistantDock() {
               {voiceState === 'CONFIRMATION_REQUIRED' && voicePayload && (
                 <div className="voice-confirmation-view">
                   <div className="detected-intent-box">
-                    <span className="tag">FINANCIAL INTENT DETECTED</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="tag">FINANCIAL INTENT DETECTED</span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/sarvam', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'tts', text: voicePayload.spokenConfirmation || 'खर्च की पुष्टि करें', targetLang: 'hi-IN' })
+                            })
+                            const d = await res.json()
+                            if (d.audios?.[0]) new Audio(`data:audio/wav;base64,${d.audios[0]}`).play()
+                          } catch (e) { console.warn(e) }
+                        }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#0d9488', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                      >
+                        <Volume2 size={16} /> Listen (Sarvam AI)
+                      </button>
+                    </div>
                     <h4>{voicePayload.spokenConfirmation}</h4>
 
                     <div className="intent-breakdown">
